@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RUST BROWSER</title>
+  <style>
+    /* =========================================================
+       БАЗА
+       ========================================================= */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      color: #e6e6e6;
+      font-family: 'Consolas', 'Courier New', monospace;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Общий canvas игры */
+    #game {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      z-index: 1;
+    }
+
+    /* =========================================================
+       МЕНЮ ВЫБОРА КАРТЫ
+       ========================================================= */
+    #menu {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: radial-gradient(ellipse at center, #1a1410 0%, #000 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    #menu h1 {
+      color: #ff7f24;
+      font-size: 64px;
+      letter-spacing: 8px;
+      text-shadow: 0 0 20px rgba(255, 127, 36, 0.6);
+      margin-bottom: 16px;
+    }
+    #menu .maps {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 700px;
+    }
+    .menu-btn {
+      background: #2a2017;
+      color: #ffb072;
+      border: 2px solid #ff7f24;
+      padding: 14px 26px;
+      font-family: inherit;
+      font-size: 16px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-transform: uppercase;
+    }
+    .menu-btn:hover { background: #ff7f24; color: #111; }
+    .menu-btn.active {
+      background: #ff7f24;
+      color: #111;
+      box-shadow: 0 0 12px #ff7f24;
+    }
+    #start-btn {
+      margin-top: 16px;
+      padding: 18px 60px;
+      font-size: 20px;
+      background: #ff7f24;
+      color: #111;
+      font-weight: bold;
+    }
+    #start-btn:hover { background: #ffb072; }
+
+    /* =========================================================
+       ПЕРЕКРЕСТИЕ И TOOLTIP
+       ========================================================= */
+    #crosshair {
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 4px; height: 4px;
+      background: #fff;
+      border-radius: 50%;
+      z-index: 50;
+      pointer-events: none;
+      box-shadow: 0 0 2px rgba(0,0,0,0.8);
+    }
+    #tooltip {
+      position: fixed;
+      left: 50%; top: 55%;
+      transform: translate(-50%, 0);
+      padding: 6px 14px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 14px;
+      border: 1px solid #ff7f24;
+      z-index: 60;
+      pointer-events: none;
+      display: none;
+    }
+
+    /* =========================================================
+       ИГРОВОЙ UI (хотбар, миникарта, HP-бары)
+       ========================================================= */
+    #game-ui {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 40;
+    }
+
+    /* HP / Hunger / Thirst бары (слева снизу) */
+    #status-bars {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+    }
+    .status-bar {
+      width: 180px;
+      height: 12px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #333;
+      position: relative;
+    }
+    .status-bar-fill {
+      height: 100%;
+      transition: width 0.2s ease;
+    }
+    #hp-fill   { background: #c23b22; }
+    #hunger-fill { background: #b87333; }
+    #thirst-fill { background: #3aa1d9; }
+
+    /* Хотбар (9 слотов) */
+    #hotbar {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      pointer-events: auto;
+    }
+    .hotbar-slot {
+      width: 56px;
+      height: 56px;
+      background: rgba(20,20,20,0.85);
+      border: 2px solid #444;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hotbar-slot.active {
+      border-color: #ff7f24;
+      box-shadow: 0 0 8px #ff7f24;
+    }
+    .hotbar-slot .slot-key {
+      position: absolute;
+      top: 2px; left: 4px;
+      font-size: 10px;
+      color: #999;
+    }
+    .hotbar-slot .slot-count {
+      position: absolute;
+      bottom: 2px; right: 4px;
+      font-size: 11px;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .hotbar-slot img, .hotbar-slot canvas {
+      max-width: 90%;
+      max-height: 90%;
+      image-rendering: pixelated;
+    }
+
+    /* Миникарта (правый нижний угол) */
+    #minimap {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      width: 150px;
+      height: 150px;
+      border: 2px solid #222;
+      background: #0a1a0a;
+      image-rendering: pixelated;
+    }
+
+    /* Время суток / FPS (правый верх) */
+    #debug-info {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 12px;
+      color: #aaa;
+      text-align: right;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    /* HP-бар блока (по центру сверху, появляется при взгляде) */
+    #block-hp {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 220px;
+      text-align: center;
+      display: none;
+    }
+    #block-hp .name {
+      color: #fff;
+      font-size: 14px;
+      text-shadow: 1px 1px 2px #000;
+      margin-bottom: 4px;
+    }
+    #block-hp .bar {
+      height: 8px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #222;
+      position: relative;
+    }
+    #block-hp .bar-fill {
+      height: 100%;
+      background: #4caf50;
+      transition: width 0.15s, background 0.15s;
+    }
+    #block-hp .nums {
+      font-size: 11px;
+      color: #ccc;
+      margin-top: 2px;
+    }
+
+    /* =========================================================
+       ИНВЕНТАРЬ (overlay по TAB)
+       ========================================================= */
+    #inventory-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(0,0,0,0.82);
+      display: none;
+      padding: 24px;
+      color: #e6e6e6;
+    }
+    #inventory-overlay.open { display: flex; gap: 16px; }
+
+    /* Левая панель — каталог */
+    #catalog-panel {
+      width: 25%;
+      min-width: 280px;
+      background: rgba(20,20,20,0.9);
+      border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+    }
+    #catalog-search {
+      width: 100%;
+      padding: 8px 10px;
+      background: #111;
+      border: 1px solid #444;
+      color: #fff;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+    #catalog-search:focus { outline: none; border-color: #ff7f24; }
+
+    #catalog-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .cat-tab {
+      padding: 4px 8px;
+      font-size: 11px;
+      background: #222;
+      color: #aaa;
+      border: 1px solid #333;
+      cursor: pointer;
+    }
+    .cat-tab:hover { background: #2a2017; color: #ffb072; }
+    .cat-tab.active { background: #ff7f24; color: #111; border-color: #ff7f24; }
+
+    #catalog-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+    /* Кастомный скроллбар */
+    #catalog-scroll::-webkit-scrollbar { width: 8px; }
+    #catalog-scroll::-webkit-scrollbar-track { background: #111; }
+    #catalog-scroll::-webkit-scrollbar-thumb {
+      background: #ff7f24;
+      border-radius: 0;
+    }
+    #catalog-scroll::-webkit-scrollbar-thumb:hover { background: #ffb072; }
+
+    #catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+    }
+    .catalog-card {
+      width: 55px;
+      height: 55px;
+      background: #2a2a2a;
+      border: 1px solid #333;
+      cursor: pointer;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .catalog-card:hover {
+      border-color: #ff7f24;
+      background: #3a2a1a;
+    }
+    .catalog-card .name {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      font-size: 8px;
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      padding: 1px 2px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .catalog-card canvas, .catalog-card img {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    /* Центральный инвентарь */
+    #inventory-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+    }
+    #inventory-panel h2 {
+      color: #ff7f24;
+      font-size: 18px;
+      letter-spacing: 2px;
+    }
+
+    #inv-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 56px);
+      grid-auto-rows: 56px;
+      gap: 4px;
+    }
+    .inv-slot {
+      width: 56px;
+      height: 56px;
+      background: rgba(20,20,20,0.9);
+      border: 1px solid #333;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .inv-slot.drag-over { border-color: #ff7f24; background: #3a2a1a; }
+    .inv-slot .slot-count {
+      position: absolute;
+      bottom: 2px; right: 4px;
+      font-size: 11px;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .inv-slot canvas, .inv-slot img { max-width: 90%; max-height: 90%; }
+    .inv-slot [draggable="true"] { cursor: grab; }
+    .inv-slot [draggable="true"]:active { cursor: grabbing; }
+
+    /* Броня */
+    #armor-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .armor-slot {
+      width: 56px;
+      height: 56px;
+      background: rgba(20,20,20,0.9);
+      border: 1px solid #555;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .armor-slot .label {
+      position: absolute;
+      top: -16px; left: 0;
+      font-size: 10px;
+      color: #aaa;
+      white-space: nowrap;
+    }
+
+    /* Контекстное меню ПКМ */
+    #ctx-menu {
+      position: fixed;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      z-index: 200;
+      display: none;
+      min-width: 120px;
+    }
+    #ctx-menu .item {
+      padding: 8px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    #ctx-menu .item:hover { background: #ff7f24; color: #111; }
+
+    /* =========================================================
+       PIE-МЕНЮ (строительство / улучшение)
+       ========================================================= */
+    #pie-menu {
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 360px;
+      height: 360px;
+      pointer-events: none;
+      z-index: 70;
+      display: none;
+    }
+
+    /* =========================================================
+       БОЛЬШАЯ КАРТА (G)
+       ========================================================= */
+    #map-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    #map-overlay.open { display: flex; }
+    #map-canvas {
+      width: 80vmin;
+      height: 80vmin;
+      background: #0a1a0a;
+      border: 2px solid #333;
+    }
+
+    /* =========================================================
+       КОНСОЛЬ (F1)
+       ========================================================= */
+    #console {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(0,0,0,0.9);
+      border-bottom: 1px solid #ff7f24;
+      z-index: 300;
+      display: none;
+      padding: 8px;
+    }
+    #console.open { display: block; }
+    #console-log {
+      max-height: 160px;
+      overflow-y: auto;
+      font-size: 12px;
+      color: #9cf;
+      margin-bottom: 4px;
+    }
+    #console-input {
+      width: 100%;
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 6px 10px;
+      font-family: inherit;
+    }
+    #console-input:focus { outline: none; border-color: #ff7f24; }
+
+    /* =========================================================
+       КОДОВЫЙ ЗАМОК (UI)
+       ========================================================= */
+    #codelock-ui {
+      position: fixed;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      background: #1a1a1a;
+      border: 2px solid #ff7f24;
+      padding: 20px;
+      z-index: 200;
+      display: none;
+      text-align: center;
+      min-width: 220px;
+    }
+    #codelock-ui h3 { color: #ff7f24; margin-bottom: 12px; }
+    #codelock-display {
+      background: #000;
+      color: #ff7f24;
+      font-size: 28px;
+      letter-spacing: 10px;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #333;
+    }
+    #codelock-keys {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+    }
+    #codelock-keys button {
+      padding: 10px;
+      font-family: inherit;
+      font-size: 16px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+      cursor: pointer;
+    }
+    #codelock-keys button:hover { background: #ff7f24; color: #111; }
+    #codelock-set {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      background: #ff7f24;
+      color: #111;
+      border: none;
+      font-family: inherit;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- =========================================================
+       МЕНЮ ВЫБОРА КАРТЫ
+       ========================================================= -->
+  <div id="menu">
+    <h1>RUST BROWSER</h1>
+    <div class="maps">
+      <button class="menu-btn map-btn active" data-map="flat">РОВНАЯ КАРТА</button>
+      <button class="menu-btn map-btn" data-map="hills">ХОЛМИСТАЯ</button>
+      <button class="menu-btn map-btn" data-map="snow">СНЕЖНАЯ</button>
+      <button class="menu-btn map-btn" data-map="desert">ПУСТЫНЯ</button>
+    </div>
+    <button id="start-btn" class="menu-btn">НАЧАТЬ ИГРУ</button>
+  </div>
+
+  <!-- =========================================================
+       ИГРОВОЙ CANVAS
+       ========================================================= -->
+  <canvas id="game"></canvas>
+
+  <!-- Перекрестие -->
+  <div id="crosshair"></div>
+
+  <!-- Подсказка действия -->
+  <div id="tooltip">Нажми E</div>
+
+  <!-- =========================================================
+       ИГРОВОЙ UI
+       ========================================================= -->
+  <div id="game-ui">
+    <!-- Статус -->
+    <div id="status-bars">
+      <div class="status-bar"><div id="hp-fill"     class="status-bar-fill" style="width:100%"></div></div>
+      <div class="status-bar"><div id="hunger-fill" class="status-bar-fill" style="width:100%"></div></div>
+      <div class="status-bar"><div id="thirst-fill" class="status-bar-fill" style="width:100%"></div></div>
+    </div>
+
+    <!-- Хотбар -->
+    <div id="hotbar"></div>
+
+    <!-- Миникарта -->
+    <canvas id="minimap" width="150" height="150"></canvas>
+
+    <!-- Отладка -->
+    <div id="debug-info">
+      <div id="time-display">12:00</div>
+      <div id="fps-display">FPS: 0</div>
+      <div id="coord-display">0, 0, 0</div>
+    </div>
+
+    <!-- HP-бар блока -->
+    <div id="block-hp">
+      <div class="name">Блок</div>
+      <div class="bar"><div class="bar-fill" style="width:100%"></div></div>
+      <div class="nums">500 / 500</div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       ИНВЕНТАРЬ (TAB)
+       ========================================================= -->
+  <div id="inventory-overlay">
+    <!-- Каталог -->
+    <div id="catalog-panel">
+      <input id="catalog-search" type="text" placeholder="Поиск предмета..." />
+      <div id="catalog-tabs"></div>
+      <div id="catalog-scroll">
+        <div id="catalog-grid"></div>
+      </div>
+    </div>
+
+    <!-- Центр -->
+    <div id="inventory-panel">
+      <h2>ИНВЕНТАРЬ</h2>
+      <div id="inv-grid"></div>
+      <div id="armor-row">
+        <div class="armor-slot" data-armor="head"><span class="label">Шлем</span></div>
+        <div class="armor-slot" data-armor="chest"><span class="label">Нагрудник</span></div>
+        <div class="armor-slot" data-armor="legs"><span class="label">Штаны</span></div>
+        <div class="armor-slot" data-armor="feet"><span class="label">Ботинки</span></div>
+        <div class="armor-slot" data-armor="insert"><span class="label">Вставка</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Контекстное меню -->
+  <div id="ctx-menu">
+    <div class="item" data-action="drop">Выбросить</div>
+  </div>
+
+  <!-- =========================================================
+       PIE-МЕНЮ (строительство / улучшение)
+       ========================================================= -->
+  <canvas id="pie-menu" width="360" height="360"></canvas>
+
+  <!-- =========================================================
+       БОЛЬШАЯ КАРТА (G)
+       ========================================================= -->
+  <div id="map-overlay">
+    <canvas id="map-canvas" width="800" height="800"></canvas>
+  </div>
+
+  <!-- =========================================================
+       КОНСОЛЬ (F1)
+       ========================================================= -->
+  <div id="console">
+    <div id="console-log"></div>
+    <input id="console-input" type="text" placeholder="Команда (noclip / god / help)" />
+  </div>
+
+  <!-- =========================================================
+       КОДОВЫЙ ЗАМОК
+       ========================================================= -->
+  <div id="codelock-ui">
+    <h3>КОДОВЫЙ ЗАМОК</h3>
+    <div id="codelock-display">----</div>
+    <div id="codelock-keys">
+      <button>1</button><button>2</button><button>3</button>
+      <button>4</button><button>5</button><button>6</button>
+      <button>7</button><button>8</button><button>9</button>
+      <button>C</button><button>0</button><button>&#9003;</button>
+    </div>
+    <button id="codelock-set">Установить</button>
+  </div>
+
+  <!-- =========================================================
+       ПОДКЛЮЧЕНИЕ БИБЛИОТЕК И СКРИПТОВ
+       ========================================================= -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+    }
+  }
+  </script>
+
+  <script type="module" src="./weapons.js"></script>
+  <script type="module" src="./building.js"></script>
+  <script type="module" src="./inventory.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
