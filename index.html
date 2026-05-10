@@ -124,7 +124,7 @@
       z-index: 40;
     }
 
-    /* HP / Hunger / Thirst бары (слева снизу) */
+    /* HP бар (слева снизу) — только здоровье */
     #status-bars {
       position: absolute;
       left: 16px;
@@ -132,11 +132,11 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
-      font-size: 12px;
+      font-size: 14px;
     }
     .status-bar {
-      width: 180px;
-      height: 12px;
+      width: 200px;
+      height: 16px;
       background: rgba(0,0,0,0.6);
       border: 1px solid #333;
       position: relative;
@@ -146,8 +146,6 @@
       transition: width 0.2s ease;
     }
     #hp-fill   { background: #c23b22; }
-    #hunger-fill { background: #b87333; }
-    #thirst-fill { background: #3aa1d9; }
 
     /* Хотбар (9 слотов) */
     #hotbar {
@@ -160,8 +158,8 @@
       pointer-events: auto;
     }
     .hotbar-slot {
-      width: 56px;
-      height: 56px;
+      width: 64px;
+      height: 64px;
       background: rgba(20,20,20,0.85);
       border: 2px solid #444;
       position: relative;
@@ -176,8 +174,8 @@
     .hotbar-slot .slot-key {
       position: absolute;
       top: 2px; left: 4px;
-      font-size: 10px;
-      color: #999;
+      font-size: 12px;
+      color: #ccc;
     }
     .hotbar-slot .slot-count {
       position: absolute;
@@ -209,8 +207,8 @@
       position: absolute;
       top: 8px;
       right: 12px;
-      font-size: 12px;
-      color: #aaa;
+      font-size: 14px;
+      color: #ccc;
       text-align: right;
       text-shadow: 1px 1px 2px #000;
     }
@@ -290,8 +288,8 @@
       margin-bottom: 8px;
     }
     .cat-tab {
-      padding: 4px 8px;
-      font-size: 11px;
+      padding: 5px 10px;
+      font-size: 13px;
       background: #222;
       color: #aaa;
       border: 1px solid #333;
@@ -316,12 +314,12 @@
 
     #catalog-grid {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 4px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
     }
     .catalog-card {
-      width: 55px;
-      height: 55px;
+      width: 72px;
+      height: 72px;
       background: #2a2a2a;
       border: 1px solid #333;
       cursor: pointer;
@@ -338,7 +336,7 @@
     .catalog-card .name {
       position: absolute;
       bottom: 0; left: 0; right: 0;
-      font-size: 8px;
+      font-size: 10px;
       color: #fff;
       background: rgba(0,0,0,0.6);
       padding: 1px 2px;
@@ -370,13 +368,13 @@
 
     #inv-grid {
       display: grid;
-      grid-template-columns: repeat(6, 56px);
-      grid-auto-rows: 56px;
+      grid-template-columns: repeat(6, 64px);
+      grid-auto-rows: 64px;
       gap: 4px;
     }
     .inv-slot {
-      width: 56px;
-      height: 56px;
+      width: 64px;
+      height: 64px;
       background: rgba(20,20,20,0.9);
       border: 1px solid #333;
       position: relative;
@@ -403,8 +401,8 @@
       margin-top: 8px;
     }
     .armor-slot {
-      width: 56px;
-      height: 56px;
+      width: 64px;
+      height: 64px;
       background: rgba(20,20,20,0.9);
       border: 1px solid #555;
       position: relative;
@@ -584,9 +582,7 @@
   <div id="game-ui">
     <!-- Статус -->
     <div id="status-bars">
-      <div class="status-bar"><div id="hp-fill"     class="status-bar-fill" style="width:100%"></div></div>
-      <div class="status-bar"><div id="hunger-fill" class="status-bar-fill" style="width:100%"></div></div>
-      <div class="status-bar"><div id="thirst-fill" class="status-bar-fill" style="width:100%"></div></div>
+      <div class="status-bar"><div id="hp-fill" class="status-bar-fill" style="width:100%"></div></div>
     </div>
 
     <!-- Хотбар -->

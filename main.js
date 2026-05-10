@@ -28,28 +28,68 @@ function makeCanvasTexture(draw, size = 512) {
 }
 const TEX = {
   grass: makeCanvasTexture((ctx, s) => {
+    // Более реалистичная трава — несколько слоёв и оттенков
     ctx.fillStyle = '#3d6a2a'; ctx.fillRect(0, 0, s, s);
-    for (let i = 0; i < 4000; i++) {
-      ctx.fillStyle = `rgba(${40 + Math.random() * 60 | 0},${80 + Math.random() * 80 | 0},${30 + Math.random() * 50 | 0},${0.3 + Math.random() * 0.7})`;
-      ctx.fillRect(Math.random() * s, Math.random() * s, 2, 2);
+    // Пятна тёмной травы
+    for (let i = 0; i < 120; i++) {
+      ctx.fillStyle = `rgba(30,${50+Math.random()*30|0},20,0.5)`;
+      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 10+Math.random()*20, 0, 6.28); ctx.fill();
+    }
+    // Светлые пятна
+    for (let i = 0; i < 80; i++) {
+      ctx.fillStyle = `rgba(${80+Math.random()*40|0},${120+Math.random()*60|0},${40+Math.random()*30|0},0.4)`;
+      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 6+Math.random()*14, 0, 6.28); ctx.fill();
+    }
+    // Мелкие точки
+    for (let i = 0; i < 5000; i++) {
+      ctx.fillStyle = `rgba(${40+Math.random()*80|0},${70+Math.random()*100|0},${20+Math.random()*50|0},${0.2+Math.random()*0.6})`;
+      ctx.fillRect(Math.random()*s, Math.random()*s, 1+Math.random()*2, 1+Math.random()*2);
+    }
+    // Травинки
+    ctx.strokeStyle = 'rgba(50,100,30,0.3)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 300; i++) {
+      const x = Math.random()*s, y = Math.random()*s;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+(Math.random()-0.5)*4, y-3-Math.random()*5); ctx.stroke();
     }
   }),
   snow: makeCanvasTexture((ctx, s) => {
-    ctx.fillStyle = '#ecf2f5'; ctx.fillRect(0, 0, s, s);
-    for (let i = 0; i < 3000; i++) {
-      ctx.fillStyle = `rgba(255,255,255,${0.3 + Math.random() * 0.7})`;
-      ctx.fillRect(Math.random() * s, Math.random() * s, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    ctx.fillStyle = '#e8eef2'; ctx.fillRect(0, 0, s, s);
+    // Блёстки
+    for (let i = 0; i < 4000; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${0.3+Math.random()*0.7})`;
+      ctx.fillRect(Math.random()*s, Math.random()*s, 1+Math.random()*2, 1+Math.random()*2);
     }
-    for (let i = 0; i < 200; i++) {
-      ctx.fillStyle = `rgba(190,210,220,${0.15})`;
-      ctx.beginPath(); ctx.arc(Math.random() * s, Math.random() * s, 8 + Math.random() * 16, 0, 6.28); ctx.fill();
+    // Тени / впадины
+    for (let i = 0; i < 300; i++) {
+      ctx.fillStyle = `rgba(180,200,215,${0.15+Math.random()*0.15})`;
+      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 6+Math.random()*18, 0, 6.28); ctx.fill();
+    }
+    // Ледяная корка
+    ctx.strokeStyle = 'rgba(160,190,210,0.2)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 60; i++) {
+      ctx.beginPath(); ctx.moveTo(Math.random()*s, Math.random()*s);
+      ctx.lineTo(Math.random()*s, Math.random()*s); ctx.stroke();
     }
   }),
   sand: makeCanvasTexture((ctx, s) => {
     ctx.fillStyle = '#c9a96b'; ctx.fillRect(0, 0, s, s);
-    for (let i = 0; i < 6000; i++) {
-      ctx.fillStyle = `rgba(${180 + Math.random() * 50 | 0},${140 + Math.random() * 40 | 0},${80 + Math.random() * 40 | 0},${0.2 + Math.random() * 0.6})`;
-      ctx.fillRect(Math.random() * s, Math.random() * s, 1 + Math.random() * 2, 1);
+    // Волны песка
+    for (let y = 0; y < s; y += 6) {
+      ctx.strokeStyle = `rgba(${160+Math.random()*40|0},${130+Math.random()*30|0},${70+Math.random()*30|0},${0.15+Math.random()*0.2})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, y);
+      for (let x = 0; x < s; x += 10) ctx.lineTo(x, y + Math.sin(x * 0.05 + y * 0.3) * 2);
+      ctx.stroke();
+    }
+    // Зёрна
+    for (let i = 0; i < 8000; i++) {
+      ctx.fillStyle = `rgba(${170+Math.random()*60|0},${130+Math.random()*50|0},${70+Math.random()*50|0},${0.2+Math.random()*0.5})`;
+      ctx.fillRect(Math.random()*s, Math.random()*s, 1, 1);
+    }
+    // Мелкие камешки
+    for (let i = 0; i < 50; i++) {
+      ctx.fillStyle = `rgba(100,90,70,0.4)`;
+      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 2+Math.random()*3, 0, 6.28); ctx.fill();
     }
   }),
 };
@@ -274,7 +314,6 @@ const player = {
   noclip: false,
   god: false,
   hp: 100, maxHp: 100,
-  hunger: 100, thirst: 100,
   vel: new THREE.Vector3(),
 };
 GAME.player = player;
@@ -450,9 +489,13 @@ consoleInput.addEventListener('keydown', (e) => {
     logConsole(cmd);
     if (cmd === 'noclip') {
       player.noclip = !player.noclip;
-      player.body.type = player.noclip ? CANNON.Body.KINEMATIC : CANNON.Body.DYNAMIC;
-      if (!player.noclip) player.body.velocity.set(0, 0, 0);
-      logConsole('noclip: ' + player.noclip);
+      if (player.noclip) {
+        player.body.collisionResponse = false;
+        player.body.velocity.set(0, 0, 0);
+      } else {
+        player.body.collisionResponse = true;
+      }
+      logConsole('noclip: ' + (player.noclip ? 'ON — летаешь сквозь всё' : 'OFF'));
     } else if (cmd === 'god') {
       player.god = !player.god;
       logConsole('god: ' + player.god);
@@ -558,13 +601,23 @@ function loop() {
     player.crouching = !!keys['ControlLeft'] || !!keys['ControlRight'];
 
     if (player.noclip) {
-      const v = new THREE.Vector3().copy(input);
-      if (keys['Space']) v.y += moveSpeed;
-      if (player.crouching) v.y -= moveSpeed;
-      player.body.position.x += v.x * dt;
-      player.body.position.y += v.y * dt;
-      player.body.position.z += v.z * dt;
+      // Noclip: полёт в направлении камеры, сквозь всё
+      const camDir = new THREE.Vector3();
+      camera.getWorldDirection(camDir);
+      const flySpeed = player.running ? player.runSpeed * 2 : moveSpeed;
+      const v = new THREE.Vector3();
+      if (keys['KeyW']) v.add(camDir);
+      if (keys['KeyS']) v.sub(camDir);
+      if (keys['KeyD']) v.add(right);
+      if (keys['KeyA']) v.sub(right);
+      if (keys['Space']) v.y += 1;
+      if (player.crouching) v.y -= 1;
+      v.normalize().multiplyScalar(flySpeed * dt);
+      player.body.position.x += v.x;
+      player.body.position.y += v.y;
+      player.body.position.z += v.z;
       player.body.velocity.set(0, 0, 0);
+      // Не вызываем world.step — тело не взаимодействует ни с чем
     } else if (controls.isLocked) {
       player.body.velocity.x = input.x;
       player.body.velocity.z = input.z;
@@ -572,7 +625,7 @@ function loop() {
       player.body.velocity.x = 0; player.body.velocity.z = 0;
     }
 
-    world.step(1 / 60, dt, 3);
+    if (!player.noclip) world.step(1 / 60, dt, 3);
 
     // Камера привязана к телу
     const crouchDrop = player.crouching ? 0.5 : 0;
@@ -636,3 +689,144 @@ GAME.addMapInteractable = (mesh, tooltip) => {
   mesh.userData.interactable = true;
   mesh.userData.tooltip = tooltip || 'Нажми E';
 };
+
+// =============================================================
+// ПРЕДМЕТ В РУКЕ (3D-модель привязана к камере)
+// =============================================================
+const handGroup = new THREE.Group();
+handGroup.position.set(0.35, -0.35, -0.6); // правый-нижний от камеры
+camera.add(handGroup);
+scene.add(camera); // чтобы дети камеры рендерились
+
+let currentHandItem = null;
+
+function makeHandModel(type) {
+  const g = new THREE.Group();
+  const mat = (color) => new THREE.MeshLambertMaterial({ color });
+
+  switch (type) {
+    // --- Мили ---
+    case 'rock':
+      g.add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), mat(0x8a8a8a)));
+      break;
+    case 'torch':
+      const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.5, 6), mat(0x8B5A2B));
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.12, 8), new THREE.MeshBasicMaterial({ color: 0xff6a00 }));
+      flame.position.y = 0.3; stick.position.y = 0; g.add(stick); g.add(flame);
+      break;
+    case 'knife': case 'machete':
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.05), mat(0xcccccc));
+      const handle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.04), mat(0x5a3a1a));
+      handle.position.y = -0.2; g.add(blade); g.add(handle);
+      break;
+    case 'wood_spear': case 'bone_spear':
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 6), mat(0x8B5A2B));
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 6), mat(0xcccccc));
+      tip.position.y = 0.5; g.add(shaft); g.add(tip);
+      break;
+    // --- Топоры/кирки ---
+    case 'axe': case 'stone_hatchet':
+      const axH = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6), mat(0x8B5A2B));
+      const axB = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.02), mat(0x888888));
+      axB.position.set(0.06, 0.2, 0); g.add(axH); g.add(axB);
+      break;
+    case 'pickaxe': case 'stone_pick':
+      const piH = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6), mat(0x8B5A2B));
+      const piB = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.03, 0.02), mat(0x888888));
+      piB.position.set(0, 0.25, 0); g.add(piH); g.add(piB);
+      break;
+    // --- Строительство ---
+    case 'building_plan':
+      const paper = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.01), mat(0x4488ff));
+      paper.rotation.z = 0.1; g.add(paper);
+      break;
+    case 'hammer':
+      const hH = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 6), mat(0x8B5A2B));
+      const hB = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.06), mat(0x888888));
+      hB.position.set(0, 0.2, 0); g.add(hH); g.add(hB);
+      break;
+    // --- Пистолеты ---
+    case 'revolver': case 'p2': case 'm92': case 'python':
+      const pBody = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.22), mat(0x444444));
+      const pGrip = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.12, 0.04), mat(0x5a3a1a));
+      pGrip.position.set(0, -0.08, 0.06); g.add(pBody); g.add(pGrip);
+      break;
+    // --- Дробовики ---
+    case 'double_barrel': case 'pump_shotgun': case 'spas':
+      const sBody = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.5), mat(0x333333));
+      const sGrip = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.08), mat(0x5a3a1a));
+      sGrip.position.set(0, -0.06, 0.12); const sPump = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.035, 0.12), mat(0x6a3a1a));
+      sPump.position.set(0, -0.02, -0.08); g.add(sBody); g.add(sGrip); g.add(sPump);
+      break;
+    // --- Автоматы ---
+    case 'ak47': case 'lr300': case 'sar': case 'm249': case 'm39':
+      const rBody = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.55), mat(0x444444));
+      const rMag = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.12, 0.04), mat(0x222222));
+      rMag.position.set(0, -0.08, 0.05); const rStock = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.15), mat(0x5a3a1a));
+      rStock.position.set(0, 0, 0.32); g.add(rBody); g.add(rMag); g.add(rStock);
+      break;
+    // --- SMG ---
+    case 'tommy': case 'mp5':
+      const smBody = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.05, 0.35), mat(0x333333));
+      const smMag = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.1, 0.03), mat(0x222222));
+      smMag.position.set(0, -0.06, 0); const smGrip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08, 0.03), mat(0x333333));
+      smGrip.position.set(0, -0.05, 0.1); g.add(smBody); g.add(smMag); g.add(smGrip);
+      break;
+    // --- Снайперки ---
+    case 'bolt': case 'l96':
+      const snBody = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.05, 0.7), mat(0x333333));
+      const snScope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.08, 8), mat(0x222222));
+      snScope.rotation.x = Math.PI/2; snScope.position.set(0, 0.05, -0.1);
+      const snStock = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.07, 0.18), mat(0x5a3a1a));
+      snStock.position.set(0, 0, 0.38); g.add(snBody); g.add(snScope); g.add(snStock);
+      break;
+    // --- Луки ---
+    case 'bow': case 'crossbow': case 'compound_bow':
+      const bowBody = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.015, 8, 16, Math.PI), mat(0x8B5A2B));
+      bowBody.rotation.z = Math.PI/2; g.add(bowBody);
+      break;
+    // --- Взрывчатка ---
+    case 'c4':
+      const c4b = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.2), mat(0xe8d16a));
+      g.add(c4b); break;
+    case 'rpg':
+      const rpgTube = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8), mat(0x444444));
+      rpgTube.rotation.x = Math.PI/2; g.add(rpgTube); break;
+    // --- Default: простой куб ---
+    default:
+      const cube = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), mat(0x888888));
+      g.add(cube);
+  }
+  g.scale.set(0.8, 0.8, 0.8);
+  return g;
+}
+
+// Обновление модели в руке при смене хотбара
+GAME.on('hotbarChange', (item) => {
+  // Убираем старую
+  while (handGroup.children.length) {
+    const c = handGroup.children.pop();
+    c.traverse(o => { o.geometry?.dispose?.(); o.material?.dispose?.(); });
+  }
+  currentHandItem = null;
+  if (item) {
+    const model = makeHandModel(item.type);
+    handGroup.add(model);
+    currentHandItem = item.type;
+  }
+});
+
+// Лёгкая анимация покачивания в руке при ходьбе
+let handBobT = 0;
+GAME.on('frame', (dt) => {
+  if (!player.body) return;
+  const speed = Math.hypot(player.body.velocity.x, player.body.velocity.z);
+  if (speed > 1 && player.onGround) {
+    handBobT += dt * (player.running ? 12 : 8);
+    handGroup.position.y = -0.35 + Math.sin(handBobT) * 0.015;
+    handGroup.position.x = 0.35 + Math.cos(handBobT * 0.5) * 0.008;
+  } else {
+    handBobT = 0;
+    handGroup.position.set(0.35, -0.35, -0.6);
+  }
+});
