@@ -314,13 +314,15 @@
 
     #catalog-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(4, 64px);
+      grid-auto-rows: 64px;
+      gap: 4px;
+      justify-content: center;
     }
     .catalog-card {
-      width: 72px;
-      height: 72px;
-      background: #2a2a2a;
+      width: 64px;
+      height: 64px;
+      background: rgba(20,20,20,0.9);
       border: 1px solid #333;
       cursor: pointer;
       position: relative;
@@ -328,26 +330,21 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      transition: all 0.1s;
     }
     .catalog-card:hover {
       border-color: #ff7f24;
       background: #3a2a1a;
+      transform: scale(1.08);
+      box-shadow: 0 0 8px rgba(255,127,36,0.5);
+      z-index: 10;
     }
     .catalog-card .name {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      font-size: 10px;
-      color: #fff;
-      background: rgba(0,0,0,0.6);
-      padding: 1px 2px;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      display: none; /* имя только через title при наведении */
     }
     .catalog-card canvas, .catalog-card img {
-      width: 100%;
-      height: 100%;
+      width: 90%;
+      height: 90%;
       image-rendering: pixelated;
     }
 

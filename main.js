@@ -26,70 +26,213 @@ function makeCanvasTexture(draw, size = 512) {
   tex.anisotropy = 4;
   return tex;
 }
+// --- Простая функция шума для органичности текстур ---
+function noise2D(x, y) {
+  const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
+function smoothNoise(x, y) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const a = noise2D(ix, iy);
+  const b = noise2D(ix + 1, iy);
+  const c = noise2D(ix, iy + 1);
+  const d = noise2D(ix + 1, iy + 1);
+  return a * (1-fx)*(1-fy) + b * fx*(1-fy) + c * (1-fx)*fy + d * fx*fy;
+}
+
 const TEX = {
+  // ======================================================
+  // ТРАВА — реалистичная, 6 слоёв
+  // ======================================================
   grass: makeCanvasTexture((ctx, s) => {
-    // Более реалистичная трава — несколько слоёв и оттенков
-    ctx.fillStyle = '#3d6a2a'; ctx.fillRect(0, 0, s, s);
-    // Пятна тёмной травы
-    for (let i = 0; i < 120; i++) {
-      ctx.fillStyle = `rgba(30,${50+Math.random()*30|0},20,0.5)`;
-      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 10+Math.random()*20, 0, 6.28); ctx.fill();
+    // Слой 1: базовый градиент с шумом
+    const img = ctx.createImageData(s, s);
+    for (let y = 0; y < s; y++) {
+      for (let x = 0; x < s; x++) {
+        const n1 = smoothNoise(x * 0.03, y * 0.03);
+        const n2 = smoothNoise(x * 0.1, y * 0.1) * 0.5;
+        const n3 = smoothNoise(x * 0.3, y * 0.3) * 0.25;
+        const n = n1 + n2 + n3;
+        // Базовые оттенки зелёного
+        const r = 40 + n * 40 | 0;
+        const g = 80 + n * 70 | 0;
+        const b = 25 + n * 35 | 0;
+        const idx = (y * s + x) * 4;
+        img.data[idx] = r;
+        img.data[idx+1] = g;
+        img.data[idx+2] = b;
+        img.data[idx+3] = 255;
+      }
     }
-    // Светлые пятна
-    for (let i = 0; i < 80; i++) {
-      ctx.fillStyle = `rgba(${80+Math.random()*40|0},${120+Math.random()*60|0},${40+Math.random()*30|0},0.4)`;
-      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 6+Math.random()*14, 0, 6.28); ctx.fill();
+    ctx.putImageData(img, 0, 0);
+    // Слой 2: тёмные пятна земли (где мало травы)
+    for (let i = 0; i < 40; i++) {
+      const x = Math.random()*s, y = Math.random()*s, r = 15 + Math.random()*35;
+      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0, `rgba(${50+Math.random()*20|0},${40+Math.random()*15|0},20,0.6)`);
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
     }
-    // Мелкие точки
-    for (let i = 0; i < 5000; i++) {
-      ctx.fillStyle = `rgba(${40+Math.random()*80|0},${70+Math.random()*100|0},${20+Math.random()*50|0},${0.2+Math.random()*0.6})`;
-      ctx.fillRect(Math.random()*s, Math.random()*s, 1+Math.random()*2, 1+Math.random()*2);
-    }
-    // Травинки
-    ctx.strokeStyle = 'rgba(50,100,30,0.3)'; ctx.lineWidth = 1;
-    for (let i = 0; i < 300; i++) {
-      const x = Math.random()*s, y = Math.random()*s;
-      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+(Math.random()-0.5)*4, y-3-Math.random()*5); ctx.stroke();
-    }
-  }),
-  snow: makeCanvasTexture((ctx, s) => {
-    ctx.fillStyle = '#e8eef2'; ctx.fillRect(0, 0, s, s);
-    // Блёстки
-    for (let i = 0; i < 4000; i++) {
-      ctx.fillStyle = `rgba(255,255,255,${0.3+Math.random()*0.7})`;
-      ctx.fillRect(Math.random()*s, Math.random()*s, 1+Math.random()*2, 1+Math.random()*2);
-    }
-    // Тени / впадины
-    for (let i = 0; i < 300; i++) {
-      ctx.fillStyle = `rgba(180,200,215,${0.15+Math.random()*0.15})`;
-      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 6+Math.random()*18, 0, 6.28); ctx.fill();
-    }
-    // Ледяная корка
-    ctx.strokeStyle = 'rgba(160,190,210,0.2)'; ctx.lineWidth = 1;
+    // Слой 3: светлые пятна свежей травы
     for (let i = 0; i < 60; i++) {
-      ctx.beginPath(); ctx.moveTo(Math.random()*s, Math.random()*s);
-      ctx.lineTo(Math.random()*s, Math.random()*s); ctx.stroke();
+      const x = Math.random()*s, y = Math.random()*s, r = 10 + Math.random()*25;
+      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0, `rgba(${100+Math.random()*50|0},${160+Math.random()*50|0},${50+Math.random()*30|0},0.5)`);
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
     }
-  }),
-  sand: makeCanvasTexture((ctx, s) => {
-    ctx.fillStyle = '#c9a96b'; ctx.fillRect(0, 0, s, s);
-    // Волны песка
-    for (let y = 0; y < s; y += 6) {
-      ctx.strokeStyle = `rgba(${160+Math.random()*40|0},${130+Math.random()*30|0},${70+Math.random()*30|0},${0.15+Math.random()*0.2})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, y);
-      for (let x = 0; x < s; x += 10) ctx.lineTo(x, y + Math.sin(x * 0.05 + y * 0.3) * 2);
+    // Слой 4: Травинки (тонкие штрихи вверх)
+    for (let i = 0; i < 800; i++) {
+      const x = Math.random()*s, y = Math.random()*s;
+      const h = 3 + Math.random()*7;
+      const tilt = (Math.random()-0.5) * 3;
+      const shade = 40 + Math.random()*60;
+      ctx.strokeStyle = `rgba(${shade*0.6|0},${shade*1.4|0},${shade*0.5|0},${0.4+Math.random()*0.4})`;
+      ctx.lineWidth = 0.8 + Math.random()*0.5;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+tilt, y-h); ctx.stroke();
+    }
+    // Слой 5: Толстые травинки (передний план)
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random()*s, y = Math.random()*s;
+      const h = 5 + Math.random()*10;
+      ctx.strokeStyle = `rgba(${60+Math.random()*40|0},${130+Math.random()*50|0},${40+Math.random()*30|0},0.7)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x+(Math.random()-0.5)*4, y-h/2, x+(Math.random()-0.5)*6, y-h);
       ctx.stroke();
     }
-    // Зёрна
-    for (let i = 0; i < 8000; i++) {
-      ctx.fillStyle = `rgba(${170+Math.random()*60|0},${130+Math.random()*50|0},${70+Math.random()*50|0},${0.2+Math.random()*0.5})`;
-      ctx.fillRect(Math.random()*s, Math.random()*s, 1, 1);
+    // Слой 6: Мелкие цветочки
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random()*s, y = Math.random()*s;
+      const colors = ['#fff0a0', '#ffc0d0', '#ffffff', '#ffe040'];
+      ctx.fillStyle = colors[Math.floor(Math.random()*colors.length)];
+      ctx.beginPath();
+      for (let p = 0; p < 5; p++) {
+        const a = p * Math.PI * 2 / 5;
+        ctx.arc(x + Math.cos(a)*1.5, y + Math.sin(a)*1.5, 1.2, 0, 6.28);
+      }
+      ctx.fill();
     }
-    // Мелкие камешки
-    for (let i = 0; i < 50; i++) {
-      ctx.fillStyle = `rgba(100,90,70,0.4)`;
-      ctx.beginPath(); ctx.arc(Math.random()*s, Math.random()*s, 2+Math.random()*3, 0, 6.28); ctx.fill();
+    // Слой 7: мелкий шум/зернистость
+    const noise = ctx.createImageData(s, s);
+    for (let i = 0; i < noise.data.length; i += 4) {
+      const v = (Math.random() - 0.5) * 20;
+      noise.data[i] = 0; noise.data[i+1] = v; noise.data[i+2] = 0;
+      noise.data[i+3] = Math.abs(v) * 4;
+    }
+    const nc = document.createElement('canvas'); nc.width = nc.height = s;
+    nc.getContext('2d').putImageData(noise, 0, 0);
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.drawImage(nc, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  }),
+  // ======================================================
+  // СНЕГ — пушистый, с сугробами
+  // ======================================================
+  snow: makeCanvasTexture((ctx, s) => {
+    // База — градиент с шумом
+    const img = ctx.createImageData(s, s);
+    for (let y = 0; y < s; y++) {
+      for (let x = 0; x < s; x++) {
+        const n = smoothNoise(x * 0.04, y * 0.04) * 40;
+        const n2 = smoothNoise(x * 0.2, y * 0.2) * 20;
+        const v = 220 + n + n2 | 0;
+        const idx = (y * s + x) * 4;
+        img.data[idx] = Math.min(255, v);
+        img.data[idx+1] = Math.min(255, v+5);
+        img.data[idx+2] = Math.min(255, v+10);
+        img.data[idx+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    // Сугробы — голубоватые тени
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random()*s, y = Math.random()*s, r = 15 + Math.random()*40;
+      const grd = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grd.addColorStop(0, 'rgba(170,195,220,0.3)');
+      grd.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
+    }
+    // Блёстки-кристаллы
+    for (let i = 0; i < 600; i++) {
+      const x = Math.random()*s, y = Math.random()*s;
+      ctx.fillStyle = `rgba(255,255,255,${0.6+Math.random()*0.4})`;
+      ctx.fillRect(x, y, 1.5, 1.5);
+    }
+    // Крупные блёстки
+    for (let i = 0; i < 60; i++) {
+      const x = Math.random()*s, y = Math.random()*s;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(x, y-3); ctx.lineTo(x+1, y); ctx.lineTo(x+3, y);
+      ctx.lineTo(x+1, y+1); ctx.lineTo(x, y+3); ctx.lineTo(x-1, y+1);
+      ctx.lineTo(x-3, y); ctx.lineTo(x-1, y);
+      ctx.closePath(); ctx.fill();
+    }
+    // Следы / царапины
+    ctx.strokeStyle = 'rgba(180,200,220,0.25)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 40; i++) {
+      ctx.beginPath();
+      ctx.moveTo(Math.random()*s, Math.random()*s);
+      ctx.bezierCurveTo(Math.random()*s, Math.random()*s, Math.random()*s, Math.random()*s, Math.random()*s, Math.random()*s);
+      ctx.stroke();
+    }
+  }),
+  // ======================================================
+  // ПЕСОК — дюны, рябь, камешки
+  // ======================================================
+  sand: makeCanvasTexture((ctx, s) => {
+    // База — градиент оттенков
+    const img = ctx.createImageData(s, s);
+    for (let y = 0; y < s; y++) {
+      for (let x = 0; x < s; x++) {
+        const n1 = smoothNoise(x * 0.02, y * 0.02) * 50;
+        const n2 = smoothNoise(x * 0.08, y * 0.08) * 25;
+        const v = n1 + n2;
+        const idx = (y * s + x) * 4;
+        img.data[idx] = Math.min(255, 195 + v);
+        img.data[idx+1] = Math.min(255, 160 + v * 0.8);
+        img.data[idx+2] = Math.min(255, 100 + v * 0.5);
+        img.data[idx+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    // Рябь песчаных волн
+    for (let y = 0; y < s; y += 4) {
+      ctx.strokeStyle = `rgba(${140+Math.random()*30|0},${110+Math.random()*25|0},${60+Math.random()*25|0},0.3)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(0, y);
+      for (let x = 0; x < s; x += 8) {
+        const dy = Math.sin(x * 0.04 + y * 0.2) * 3 + Math.sin(x * 0.15) * 1.5;
+        ctx.lineTo(x, y + dy);
+      }
+      ctx.stroke();
+    }
+    // Зёрна крупные
+    for (let i = 0; i < 2000; i++) {
+      const v = 180 + Math.random()*60 | 0;
+      ctx.fillStyle = `rgba(${v},${v*0.8|0},${v*0.5|0},${0.3+Math.random()*0.4})`;
+      ctx.fillRect(Math.random()*s, Math.random()*s, 1.5, 1);
+    }
+    // Камешки
+    for (let i = 0; i < 80; i++) {
+      const x = Math.random()*s, y = Math.random()*s, r = 2 + Math.random()*4;
+      const grd = ctx.createRadialGradient(x-r*0.3, y-r*0.3, 0, x, y, r);
+      grd.addColorStop(0, '#a89870');
+      grd.addColorStop(1, '#5a4830');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill();
+    }
+    // Ракушки редко
+    for (let i = 0; i < 8; i++) {
+      ctx.strokeStyle = '#fff0e0'; ctx.lineWidth = 1.5;
+      const x = Math.random()*s, y = Math.random()*s;
+      ctx.beginPath(); ctx.arc(x, y, 3+Math.random()*3, 0.3, 2.8); ctx.stroke();
     }
   }),
 };
@@ -198,7 +341,7 @@ function buildGround(type) {
   if (type === 'snow') { tex = TEX.snow; color = 0xffffff; }
   else if (type === 'desert') { tex = TEX.sand; color = 0xd9b87a; }
   else { tex = TEX.grass; color = 0x7ab84a; }
-  tex.repeat.set(50, 50);
+  tex.repeat.set(80, 80);
 
   const mat = new THREE.MeshLambertMaterial({ map: tex, color });
   const ground = new THREE.Mesh(geom, mat);
@@ -213,7 +356,7 @@ function buildGround(type) {
   worldPhysics.push(body);
 
   // Трава
-  if (type !== 'snow' && type !== 'desert') addGrass(2000);
+  if (type !== 'snow' && type !== 'desert') addGrass(5000);
   else if (type === 'desert') addDesertDetails();
   else if (type === 'snow') addSnowDetails();
 
@@ -223,28 +366,90 @@ function buildGround(type) {
   else { scene.background = new THREE.Color(0x87ceeb); scene.fog.color.set(0x87ceeb); }
 }
 
-// ---------- Объёмная трава: 2000 плоскостей ----------
+// ---------- Объёмная трава: 5000 плоскостей с процедурной текстурой ----------
 let grassMesh = null;
 const grassOffsets = [];
 function addGrass(count) {
-  const geom = new THREE.PlaneGeometry(0.2, 0.5);
-  geom.translate(0, 0.25, 0);
+  // Текстура травинки — вертикальный градиент с прозрачностью
+  const gc = document.createElement('canvas');
+  gc.width = 32; gc.height = 64;
+  const gctx = gc.getContext('2d');
+  // Несколько травинок на одной текстуре
+  for (let b = 0; b < 3; b++) {
+    const x = 6 + b * 10;
+    const grd = gctx.createLinearGradient(0, 0, 0, 64);
+    grd.addColorStop(0, 'rgba(160,220,80,0)');
+    grd.addColorStop(0.1, 'rgba(130,200,70,0.9)');
+    grd.addColorStop(0.6, 'rgba(70,140,40,1)');
+    grd.addColorStop(1, 'rgba(40,90,25,1)');
+    gctx.fillStyle = grd;
+    gctx.beginPath();
+    gctx.moveTo(x, 64);
+    gctx.lineTo(x-2, 10);
+    gctx.quadraticCurveTo(x, 0, x+2, 10);
+    gctx.lineTo(x, 64);
+    gctx.closePath();
+    gctx.fill();
+  }
+  const grassTex = new THREE.CanvasTexture(gc);
+  grassTex.wrapS = grassTex.wrapT = THREE.ClampToEdgeWrapping;
+
+  const geom = new THREE.PlaneGeometry(0.35, 0.7);
+  geom.translate(0, 0.35, 0);
   const mat = new THREE.MeshBasicMaterial({
-    color: 0x4a8a2a, side: THREE.DoubleSide, transparent: true, alphaTest: 0.3,
+    map: grassTex,
+    side: THREE.DoubleSide,
+    transparent: true,
+    alphaTest: 0.3,
   });
   grassMesh = new THREE.InstancedMesh(geom, mat, count);
   grassMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+
+  // Цвета для разнообразия
+  const colors = new Float32Array(count * 3);
+  grassMesh.instanceColor = new THREE.InstancedBufferAttribute(colors, 3);
+
   const dummy = new THREE.Object3D();
   grassOffsets.length = 0;
-  for (let i = 0; i < count; i++) {
+  // Распределяем пучками (кустами) для естественности
+  const clusters = 200;
+  let idx = 0;
+  for (let c = 0; c < clusters && idx < count; c++) {
+    const cx = (Math.random() - 0.5) * WORLD_SIZE * 0.9;
+    const cz = (Math.random() - 0.5) * WORLD_SIZE * 0.9;
+    const perCluster = Math.min(count - idx, 20 + Math.floor(Math.random() * 15));
+    for (let i = 0; i < perCluster && idx < count; i++) {
+      // В пределах ~3м от центра кластера
+      const x = cx + (Math.random() - 0.5) * 6;
+      const z = cz + (Math.random() - 0.5) * 6;
+      dummy.position.set(x, 0, z);
+      dummy.rotation.y = Math.random() * Math.PI;
+      const scale = 0.7 + Math.random() * 0.7;
+      dummy.scale.set(scale, scale * (0.9 + Math.random() * 0.4), scale);
+      dummy.updateMatrix();
+      grassMesh.setMatrixAt(idx, dummy.matrix);
+      // Цвет травинки
+      const shade = 0.7 + Math.random() * 0.6;
+      colors[idx*3]   = 0.4 * shade;
+      colors[idx*3+1] = 0.8 * shade;
+      colors[idx*3+2] = 0.3 * shade;
+      grassOffsets.push({ phase: Math.random() * Math.PI * 2, x, z, rotY: dummy.rotation.y, sx: scale, sy: dummy.scale.y });
+      idx++;
+    }
+  }
+  // Остаток разбросать
+  while (idx < count) {
     const x = (Math.random() - 0.5) * WORLD_SIZE * 0.9;
     const z = (Math.random() - 0.5) * WORLD_SIZE * 0.9;
     dummy.position.set(x, 0, z);
     dummy.rotation.y = Math.random() * Math.PI;
-    dummy.scale.set(1, 0.8 + Math.random() * 0.6, 1);
+    const scale = 0.7 + Math.random() * 0.7;
+    dummy.scale.set(scale, scale, scale);
     dummy.updateMatrix();
-    grassMesh.setMatrixAt(i, dummy.matrix);
-    grassOffsets.push({ base: dummy.matrix.clone(), phase: Math.random() * Math.PI * 2, x, z });
+    grassMesh.setMatrixAt(idx, dummy.matrix);
+    colors[idx*3] = 0.3; colors[idx*3+1] = 0.7; colors[idx*3+2] = 0.25;
+    grassOffsets.push({ phase: Math.random() * Math.PI * 2, x, z, rotY: dummy.rotation.y, sx: scale, sy: scale });
+    idx++;
   }
   grassMesh.instanceMatrix.needsUpdate = true;
   worldGroup.add(grassMesh);
@@ -655,16 +860,17 @@ function loop() {
   if (grassMesh && grassOffsets.length) {
     const t = now * 0.001;
     const dummy = new THREE.Object3D();
-    // Обновляем только первые 500 инстансов каждый кадр по очереди (экономия)
-    const start = (fpsCount * 400) % grassOffsets.length;
-    for (let i = 0; i < 400; i++) {
-      const idx = (start + i) % grassOffsets.length;
-      const g = grassOffsets[idx];
-      const sway = Math.sin(t + g.phase) * 0.08;
+    // Обновляем 500 инстансов каждый кадр для производительности
+    const start = (fpsCount * 500) % grassOffsets.length;
+    for (let i = 0; i < 500; i++) {
+      const ii = (start + i) % grassOffsets.length;
+      const g = grassOffsets[ii];
+      const sway = Math.sin(t + g.phase) * 0.1;
       dummy.position.set(g.x, 0, g.z);
-      dummy.rotation.set(0, g.phase, sway);
+      dummy.rotation.set(0, g.rotY, sway);
+      dummy.scale.set(g.sx, g.sy, g.sx);
       dummy.updateMatrix();
-      grassMesh.setMatrixAt(idx, dummy.matrix);
+      grassMesh.setMatrixAt(ii, dummy.matrix);
     }
     grassMesh.instanceMatrix.needsUpdate = true;
   }
