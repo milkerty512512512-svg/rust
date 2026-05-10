@@ -228,8 +228,16 @@ function generateItemIcon(name, category, type) {
   ctx.strokeStyle = 'rgba(0,0,0,0.4)';
   ctx.strokeRect(0.5, 0.5, 63, 63);
 
-  iconCache.set(key, c);
-  return c;
+  // Конвертируем canvas в dataURL — тогда cloneNode() у <img> работает правильно
+  const img = new Image();
+  img.src = c.toDataURL();
+  img.style.width = '100%';
+  img.style.height = '100%';
+  img.style.imageRendering = 'pixelated';
+  img.draggable = false;
+
+  iconCache.set(key, img);
+  return img;
 }
 GAME.generateItemIcon = generateItemIcon;
 
@@ -473,16 +481,50 @@ function addItemToInv(item) {
   const idx = firstEmpty(inv.slots);
   if (idx === -1) {
     const hbIdx = firstEmpty(inv.hotbar);
-    if (hbIdx === -1) return false;
+    if (hbIdx === -1) {
+      showToast('Инвентарь полон!');
+      return false;
+    }
     inv.hotbar[hbIdx] = { ...item, count: 1 };
     renderHotbar();
+    showToast('+ ' + item.name + ' (в хотбар)');
     return true;
   }
   inv.slots[idx] = { ...item, count: 1 };
   renderInv();
+  showToast('+ ' + item.name);
   return true;
 }
 GAME.addItemToInv = addItemToInv;
+
+// Всплывающее уведомление о добавлении предмета
+let toastEl = null;
+function showToast(msg) {
+  if (!toastEl) {
+    toastEl = document.createElement('div');
+    toastEl.style.cssText = `
+      position: fixed;
+      left: 50%;
+      top: 20%;
+      transform: translateX(-50%);
+      background: rgba(20,20,20,0.95);
+      color: #ff7f24;
+      padding: 10px 20px;
+      border: 2px solid #ff7f24;
+      font-family: 'Consolas', monospace;
+      font-size: 16px;
+      font-weight: bold;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    `;
+    document.body.appendChild(toastEl);
+  }
+  toastEl.textContent = msg;
+  toastEl.style.opacity = '1';
+  clearTimeout(toastEl._timer);
+  toastEl._timer = setTimeout(() => { toastEl.style.opacity = '0'; }, 1500);
+}
 
 // =============================================================
 // КАТАЛОГ (левая панель)
@@ -712,6 +754,11 @@ function toggleInventory() {
     renderInv();
     renderHotbar();
     GAME.controls?.unlock?.();
+  } else {
+    // Снимаем фокус с поиска, чтобы клавиши снова работали
+    document.activeElement?.blur?.();
+    // Возвращаем захват мыши
+    setTimeout(() => GAME.controls?.lock?.(), 50);
   }
 }
 GAME.on('toggleInventory', toggleInventory);
@@ -721,8 +768,16 @@ addEventListener('keydown', (e) => {
   if (!invOverlay.classList.contains('open') && /^Digit[1-9]$/.test(e.code)) {
     setActiveHotbar(+e.code.slice(-1) - 1);
   }
+  // Tab также закрывает инвентарь, даже если фокус на поле поиска
+  if (e.code === 'Tab' && invOverlay.classList.contains('open')) {
+    e.preventDefault();
+    toggleInventory();
+  }
   if (e.code === 'Escape') {
-    if (invOverlay.classList.contains('open')) invOverlay.classList.remove('open');
+    if (invOverlay.classList.contains('open')) {
+      invOverlay.classList.remove('open');
+      GAME.controls?.lock?.();
+    }
     ctxMenu.style.display = 'none';
   }
 });
